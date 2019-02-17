@@ -172,7 +172,8 @@
 	rm -rf {{ $path }}
 	mkdir {{ $path }}
 	cd /var/www/html
-	git clone https://antonio-lolic-typeqast:typeqast1710@github.com/Typeqast/WeermanCentralApi.git
+	#git clone https://uueqast:tpezzqast1zzzzz790@github.com/Typeqast/WeermanCentralApi.git
+	git clone {{ $repo }}
 	cd {{ $path }}
 @task
 
