@@ -3,3 +3,5 @@ composer.lock
 .env
 Envoy*.php
 !Envoy.blade.php
+credstash.sh
+\.idea/

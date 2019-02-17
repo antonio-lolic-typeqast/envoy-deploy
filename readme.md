@@ -1,6 +1,6 @@
-# Laravel Envoy Deploy
-
-This repository includes an Envoy.blade.php script that is designed to provide a basic "zero-downtime" deployment option using the open-source [Laravel Envoy](http://laravel.com/docs/5.4/envoy) tool.
+# Laravel And Magento Deploy Envoy Deploy
+  
+Deployment of Laravel and Magento application using a simple setup. Deployment info are posted on Slack channel and healthcheck URL is a verification that deployment succeed. 
 
 ## Requirements
 
