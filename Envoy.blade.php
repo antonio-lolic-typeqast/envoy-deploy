@@ -13,7 +13,8 @@
 		'admin',
 		'cereda_shop',
 		'cereda_admin',
-		'debtor_api'
+		'debtor_api',
+		'magento'
 	];
 
 	$envs = [
@@ -50,6 +51,7 @@
 	$healthUrl = getenv(strtoupper($app).'_DEPLOY_HEALTH_CHECK');
 
 	$branch = isset($branch) ? $branch : "develop";
+	$install = isset($install) ? $install : "no";
 	if(!isset($branch)) {
 		throw new \Exception("Unsupported branch");
 	}
@@ -74,20 +76,22 @@
 
 @task('lara_permission_setup', ['on' => 'web'])
 	echo "Permissions  setup";
-cd {{ $path }}
-    sudo chown -R www-data:www-data .
+    cd {{ $path }}
+
 	sudo find . -type d -exec chmod 755 {} \;
 	sudo find . -type f -exec chmod 644 {} \;
 	sudo chgrp -R www-data storage bootstrap/cache
 	sudo chmod -R ug+rwx storage bootstrap/cache
 	sudo chmod 777 -R public
-	#sudo chown -R ubuntu:www-data public/build
+	sudo chown -R ubuntu:www-data public
+	sudo chmod -R 777 storage/logs/*
 @endtask
 
 @task('lara_install_dependencies', ['on' => 'web'])
 	echo "Install composer";
+	cd {{ $path }}
 	export COMPOSER_ALLOW_SUPERUSER=1
-	composer install --prefer-dist --no-dev --optimize-autoloader
+    composer install --prefer-dist --no-dev --optimize-autoloader
 @endtask
 
 @task('lara_database_migrate', ['on' => 'web'])
@@ -102,7 +106,8 @@ cd {{ $path }}
 
 @task('lara_yarn_dependencies', ['on' => 'web'])
 	#NPM dependencies
-	yarn install
+cd {{ $path }}
+	sudo yarn install
 	#Gulp
 	#sudo npm rebuild node-sass
 	sudo gulp --production
@@ -130,8 +135,8 @@ cd {{ $path }}
 	sudo service nginx reload
 
 	echo "Supervisor restart processes";
-	sudo supervisorctl restart all
-	php artisan queue:restart
+#	sudo supervisorctl restart all
+#	php artisan queue:restart
 
 	echo "Bring application up";
 	php artisan up
@@ -164,15 +169,24 @@ cd {{ $path }}
 
 @task('start_deployment', ['on' => 'web'])
 	echo "Starting deployment on s <$env> environment branh <$branch> app <$appPrefix>";
-	rm -rf {{ $path }}
-	mkdir {{ $path }}
+	#sudo chown -R ubuntu:www-data $path
+#if [ -f $path ] && [ -z $path ]
+#if  [ "$install" == "no" ]
+#then
+#	echo "Update repo";
+#	cd {{ $path }}
+#pwd
+#	git checkout develop
+#	git pull origin develop
+#else
+#rm -rf {{ $path }}
+#mkdir {{ $path }}
 	cd /var/www/html
+
+	echo "Cloning repository..";
 	#git clone https://uueqast:tpezzqast1zzzzz790@github.com/Typeqast/WeermanCentralApi.git
 	git clone {{ $repo }}
-
-	#cd {{ $path }}
-	#git checkout develop
-    #git pull origin develop
+#fi
 @endtask
 
 @task('health_check')
@@ -206,24 +220,50 @@ cd {{ $path }}
 	#echo "/home/antonio88/Desktop/env_files/{{ $env }}/{{ $appPrefix }}/.env  {{ $server }}:{{ $path }}";
 	#aws s3 cp s3://wm-cf-templates/env_files/{{ $env }}/{{ $appPrefix }}/.env ./.env
 
-	echo "scp -r -i /home/antonio88/.ssh/Weerman_{{ $env }}_eu-west-1.pem /home/antonio88/Desktop/env_files/{{ $env }}/{{ $appPrefix }}/.env {{ $server }}:{{ $path }}/app/etc";
-	scp -r -i /home/antonio88/.ssh/Weerman_{{ $env }}_eu-west-1.pem /home/antonio88/Desktop/env_files/{{ $env }}/{{ $appPrefix }}/.env {{ $server }}:{{ $path }}/app/etc
+	echo "scp -r -i /home/antonio88/.ssh/Weerman_{{ $env }}_eu-west-1.pem /home/antonio88/Desktop/env_files/{{ $env }}/{{ $appPrefix }}/env.php {{ $server }}:{{ $path }}/app/etc";
+	scp -r -i /home/antonio88/.ssh/Weerman_{{ $env }}_eu-west-1.pem /home/antonio88/Desktop/env_files/{{ $env }}/{{ $appPrefix }}/env.php {{ $server }}:{{ $path }}/app/etc
 @endtask
 
 @task('mage_permission_setup', ['on' => 'web'])
-    sudo chown -R www-data:www-data .
 
 	# Install user
 	#sudo adduser magento_user
 	#sudo passwd magento_user_password
 	#sudo usermod -a -G www-data magento_user
-
+sudo usermod -a -G www-data ubuntu
     echo "Permissions  setup";
-	cd {{ $path }} && find var generated vendor pub/static pub/media app/etc -type f -exec chmod u+w {} + && find var generated vendor pub/static pub/media app/etc -type d -exec chmod u+w {} + && chmod u+x bin/magento
+	cd {{ $path }}
+    #sudo find var generated vendor pub/static pub/media app/etc -type f -exec chmod u+w {} \;
+    #sudo find var generated vendor pub/static pub/media app/etc -type d -exec chmod u+w {} \;
+
+	#sudo find . type f -exec chmod 644 {} \;
+	#sudo find . -type d -exec chmod 755 {} \;
+	sudo find ./var -type d -exec chmod 777 {} \;
+	sudo find ./pub/media -type d -exec chmod 777 {} \;
+	sudo find ./pub/static -type d -exec chmod 777 {} \;
+	sudo chmod 777 ./app/etc
+
+	#sudo chmod 644 ./app/etc/*.xml
+    sudo chmod u+x bin/magento
+    sudo chown -R ubuntu:www-data var/log/*
+
+	#important
+	sudo chmod -R 777 var pub generated
+	sudo chown -R ubuntu:www-data generated
+	sudo chmod -R u+w generated
+
+	#fix for generation is read yonly bla bla
+	sudo find generated -type d -exec chmod 777 {} \;
+	sudo find generated -type f -exec chmod 777 {} \;
+	sudo find pub -type d -exec chmod 777 {} \;
+	sudo find pub -type f -exec chmod 777 {} \;
+
+    sudo find generated -type d -exec chmod 777 {} \; && sudo find generated -type f -exec chmod 777 {} \;
 
 @endtask
 
 @task('mage_install_dependencies', ['on' => 'web'])
+cd {{ $path }}
 	echo "Install composer";
 	export COMPOSER_ALLOW_SUPERUSER=1
 	composer install --prefer-dist --no-dev --optimize-autoloader
@@ -240,18 +280,18 @@ cd {{ $path }}
 
 @task('mage_after_install', ['on' => 'web'])
 	echo "Set Deploy mode";
-	rm -rf var/cache/* generated/metadata/* generated/code/* var/view_preproccessed/* var/page_cache/* pub/static/*
+	sudo rm -rf var/cache/* generated/metadata/* generated/code/* var/view_preproccessed/* var/page_cache/* pub/static/*
 	php bin/magento deploy:mode:set production
 
 	echo "Clear any previous cached views and optimize the application";
    # php bin/magento dev:source-theme:deploy en_US nl_NL
-    php bin/magento setup:static-content:deploy en_US nl_NL
+    php bin/magento setup:static-content:deploy -f en_US nl_NL
     php bin/magento setup:di:compile
     php bin/magento maintenance:enable
     php bin/magento setup:upgrade --keep-generated
-	php bin/magento setup:store-config:set --base-url="http://localhost:8080/"
+	php bin/magento setup:store-config:set --base-url="http://weerman-magento.qa.typeqast.technology/"
 #php bin/magento setup:store-config:set --base-url="http://localhost:8080/"
-#php bin/magento setup:store-config:set --base-url-secure="https://localhost:8080/"
+#php bin/magento setup:store-config:set --base-url-secure="https://weerman-magento.qa.typeqast.technology/"
     php bin/magento cache:flush
     php bin/magento cache:clean
 	php bin/magento indexer:reindex
