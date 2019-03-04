@@ -113,7 +113,7 @@
     sudo chown -R ubuntu:www-data var/log/*
 
 	#important
-	sudo chmod -R 777 var pub generated
+	sudo chmod -R 777 var/ pub/ generated/
 	sudo chown -R ubuntu:www-data generated
 	sudo chmod -R u+w generated
 
@@ -144,17 +144,20 @@
 
 @task('after_install', ['on' => 'web'])
 	echo "Set Deploy mode";
+	sudo chown ubuntu:www-data -R generated
 	sudo rm -rf var/cache/* generated/metadata/* generated/code/* var/view_preproccessed/* var/page_cache/* pub/static/*
-	php bin/magento deploy:mode:set production
 
 	echo "Clear any previous cached views and optimize the application";
    # php bin/magento dev:source-theme:deploy en_US nl_NL
-    php bin/magento setup:static-content:deploy -f en_US nl_NL
+    php bin/magento setup:static-content:deploy  -f en_US nl_NL
     php bin/magento setup:di:compile
+	php bin/magento deploy:mode:set production
     php bin/magento maintenance:enable
     php bin/magento setup:upgrade --keep-generated
 	php bin/magento setup:store-config:set --base-url="http://weerman-magento.qa.typeqast.technology/"
     #php bin/magento setup:store-config:set --base-url-secure="https://weerman-magento.qa.typeqast.technology/"
+	# Setup use_in_frontend, use_in_backend =1
+	# never clear generated while on PRODUCTION MODE
     php bin/magento cache:flush
     php bin/magento cache:clean
 	php bin/magento indexer:reindex
